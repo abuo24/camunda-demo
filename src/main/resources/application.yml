@@ -22,7 +22,7 @@ spring:
     show-sql: false
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.PostgreSQL10Dialect
+        dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
         jdbc:
           batch_size: 20
@@ -49,17 +49,22 @@ camunda:
   client:
     zeebe:
       gatewayAddress: localhost:26500
-      restAddress: http://localhost:9600
-    oauth:
-      token:
-        audience: zeebe
-      issuer:
-        url: http://localhost:8082/identity/auth/realms/camunda-platform
-      clientId: spring-boot-app
-      clientSecret: secret
+#      restAddress: http://localhost:9600
+      security:
+        plaintext: true
+#      insecure: true
+#      plaintext: true
+#    oauth:
+#      token:
+#        audience: zeebe
+#      issuer:
+#        url: http://localhost:8082/identity/auth/realms/camunda-platform
+#      clientId: spring-boot-app
+#      clientSecret: secret
     # Disable OAuth for local development
     auth:
       enabled: false
+
 
 # Logging Configuration
 logging:

@@ -1,4 +1,4 @@
-package com.coder.camunda.dto
+package uz.coder.camunda.dto
 
 import java.math.BigDecimal
 

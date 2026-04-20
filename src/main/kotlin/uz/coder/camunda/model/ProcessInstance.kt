@@ -1,4 +1,4 @@
-package com.coder.camunda.model
+package uz.coder.camunda.model
 import java.time.LocalDateTime
 import jakarta.persistence.*
  

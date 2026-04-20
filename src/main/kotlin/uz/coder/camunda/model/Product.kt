@@ -29,10 +29,10 @@ data class Product(
     @Column(nullable = false, precision = 18, scale = 2)
     val price: BigDecimal,
 
-    @Column(name = "created_at", nullable = false)
-    val createdAt: LocalDateTime = LocalDateTime.now(),
-
-    @Column(name = "updated_at")
-    val updatedAt: LocalDateTime
+//    @Column(name = "created_at", nullable = false)
+//    val createdAt: LocalDateTime = LocalDateTime.now(),
+//
+//    @Column(name = "updated_at")
+//    val updatedAt: LocalDateTime
 )
  

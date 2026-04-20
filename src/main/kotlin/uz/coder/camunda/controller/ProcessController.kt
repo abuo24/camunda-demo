@@ -1,15 +1,14 @@
-package com.coder.camunda.controller
+package uz.coder.camunda.controller
 
-import com.coder.camunda.dto.CreateProductRequest
-import com.coder.camunda.dto.OrderProcessRequest
-import com.coder.camunda.dto.UpdateProductRequest
-import com.coder.camunda.model.Product
-import com.coder.camunda.repository.ProductRepository
-import com.coder.camunda.service.CamundaProcessService
+import uz.coder.camunda.dto.CreateProductRequest
+import uz.coder.camunda.dto.OrderProcessRequest
+import uz.coder.camunda.dto.UpdateProductRequest
+import uz.coder.camunda.repository.ProductRepository
+import uz.coder.camunda.service.CamundaProcessService
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
-import java.math.BigDecimal
+import uz.coder.camunda.model.Product
 
 @RestController
 @RequestMapping("/api/v1")
@@ -26,7 +25,7 @@ class ProcessController(
      * Start an order processing workflow
      */
     @PostMapping("/processes/order")
-    fun startOrderProcess(@RequestBody request: OrderProcessRequest): ResponseEntity<Map<String, Any>> {
+    fun startOrderProcess(@RequestBody request: OrderProcessRequest): ResponseEntity<out Map<String, Any?>?> {
         return try {
             val product = productRepository.findById(request.productId)
                 .orElseThrow { throw IllegalArgumentException("Product not found") }
@@ -64,7 +63,7 @@ class ProcessController(
      * Get process instance details
      */
     @GetMapping("/processes/{processInstanceId}")
-    fun getProcessInstance(@PathVariable processInstanceId: String): ResponseEntity<Map<String, Any>> {
+    fun getProcessInstance(@PathVariable processInstanceId: String): ResponseEntity<out Map<String, Any?>?> {
         val process = processService.getProcessInstance(processInstanceId)
         return if (process != null) {
             ResponseEntity.ok(
@@ -89,7 +88,7 @@ class ProcessController(
     @GetMapping("/processes")
     fun getActiveProcesses(
         @RequestParam(required = false) processDefinitionKey: String?
-    ): ResponseEntity<List<Map<String, Any>>> {
+    ): ResponseEntity<out List<Map<String, Any?>>?> {
         val processes = if (!processDefinitionKey.isNullOrBlank()) {
             processService.getActiveProcesses(processDefinitionKey)
         } else {

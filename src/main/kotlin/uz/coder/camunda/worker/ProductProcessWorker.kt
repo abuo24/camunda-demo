@@ -1,6 +1,6 @@
-package com.coder.camunda.worker
+package uz.coder.camunda.worker
 
-import com.coder.camunda.repository.ProcessInstanceRepository
+import uz.coder.camunda.repository.ProcessInstanceRepository
 import io.camunda.zeebe.client.ZeebeClient
 import io.camunda.zeebe.client.api.response.ActivatedJob
 import io.camunda.zeebe.spring.client.annotation.JobWorker

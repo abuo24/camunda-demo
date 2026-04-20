@@ -1,4 +1,4 @@
-package com.coder.camunda.model
+package uz.coder.camunda.model
 
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
