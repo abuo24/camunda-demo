@@ -1,0 +1,80 @@
+plugins {
+    id 'org.springframework.boot' version '3.2.5'
+    id 'io.spring.dependency-management' version '1.1.4'
+    id 'org.jetbrains.kotlin.jvm' version '1.9.24'
+    id 'org.jetbrains.kotlin.plugin.spring' version '1.9.24'
+    id 'org.jetbrains.kotlin.plugin.jpa' version '1.9.24'
+    id 'org.jetbrains.kotlin.kapt' version '1.9.24'
+}
+
+group = 'uz.coder'
+version = '0.0.1-SNAPSHOT'
+description = 'camunda'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+repositories {
+    mavenCentral()
+    maven {
+        url 'https://artifacts.camunda.com/artifactory/public/'
+    }
+    maven {
+        url 'https://repo.maven.apache.org/maven2/'
+    }
+}
+
+dependencies {
+    // Spring Boot - WITH VERSIONS ?
+    implementation 'org.springframework.boot:spring-boot-starter-web:3.2.5'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa:3.2.5'
+    implementation 'org.springframework.boot:spring-boot-starter-validation:3.2.5'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator:3.2.5'
+    implementation 'org.springframework.boot:spring-boot-devtools:3.2.5'
+
+    runtimeOnly 'org.postgresql:postgresql:42.7.0'
+
+    // Camunda 8
+    implementation 'io.camunda:zeebe-client-java:8.4.0'  // ? EXISTS
+    implementation 'io.camunda.spring:spring-boot-starter-camunda:8.4.0'
+
+    // Kotlin
+    implementation 'org.jetbrains.kotlin:kotlin-reflect:1.9.24'
+    implementation 'org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.24'
+    implementation 'com.fasterxml.jackson.module:jackson-module-kotlin:2.16.1'
+
+    // Utils
+    implementation 'org.mapstruct:mapstruct:1.5.5.Final'
+    annotationProcessor 'org.mapstruct:mapstruct-processor:1.5.5.Final'
+    kapt 'org.mapstruct:mapstruct-processor:1.5.5.Final'
+
+    // Lombok - WITH VERSION ?
+    compileOnly 'org.projectlombok:lombok:1.18.30'
+    annotationProcessor 'org.projectlombok:lombok:1.18.30'
+    kapt 'org.projectlombok:lombok:1.18.30'
+
+    // Metrics
+    implementation 'io.micrometer:micrometer-core:1.12.1'
+    implementation 'io.micrometer:micrometer-registry-prometheus:1.12.1'
+
+    // Testing
+    testImplementation 'org.springframework.boot:spring-boot-starter-test:3.2.5'
+    testImplementation 'org.jetbrains.kotlin:kotlin-test-junit5:1.9.24'
+}
+
+kotlin {
+    compilerOptions {
+        freeCompilerArgs.addAll '-Xjsr305=strict', '-Xannotation-default-target=param-property'
+    }
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
+
+tasks.named('bootJar') {
+    archiveFileName = 'camunda-app.jar'
+}
