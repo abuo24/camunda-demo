@@ -28,7 +28,7 @@ services:
 
   # Elasticsearch (required by Camunda 8)
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.5.0
+    image: elasticsearch:8.19.14
     container_name: elasticsearch
     hostname: elasticsearch
     ports:
