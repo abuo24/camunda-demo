@@ -1,0 +1,106 @@
+spring:
+  application:
+    name: camunda-demo
+
+  # Database Configuration
+  datasource:
+    url: jdbc:postgresql://localhost:5433/dwh_db
+    username: admin
+    password: admin123
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+  # JPA/Hibernate Configuration
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQL10Dialect
+        format_sql: true
+        jdbc:
+          batch_size: 20
+          fetch_size: 50
+
+  # Jackson Configuration
+  jackson:
+    default-property-inclusion: non_null
+    serialization:
+      write-dates-as-timestamps: false
+      indent-output: true
+
+# Server Configuration
+server:
+  port: 8085
+  servlet:
+    context-path: /
+  compression:
+    enabled: true
+    min-response-size: 1024
+
+# Camunda Configuration
+camunda:
+  client:
+    zeebe:
+      gatewayAddress: localhost:26500
+      restAddress: http://localhost:9600
+    oauth:
+      token:
+        audience: zeebe
+      issuer:
+        url: http://localhost:8082/identity/auth/realms/camunda-platform
+      clientId: spring-boot-app
+      clientSecret: secret
+    # Disable OAuth for local development
+    auth:
+      enabled: false
+
+# Logging Configuration
+logging:
+  level:
+    root: INFO
+    com.example: DEBUG
+    org.springframework.jdbc: DEBUG
+    org.springframework.web: DEBUG
+    io.camunda: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: logs/application.log
+    max-size: 10MB
+    max-history: 10
+    total-size-cap: 1GB
+
+# Management endpoints
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+
+# Application custom properties
+app:
+  camunda:
+    process:
+      enabled: true
+      auto-deploy: true
+    worker:
+      threads: 10
+      backoff-multiplier: 1.5
+      max-backoff: 5000
+  database:
+    init-on-startup: true
