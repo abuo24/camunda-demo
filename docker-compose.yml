@@ -1,8 +1,24 @@
-version: '3.8'
+# variables:
+# CAMUNDA_PLATFORM_VERSION: '8.4.21'
+# CAMUNDA_OPERATE_VERSION: '8.4.22'
+# CAMUNDA_TASKLIST_VERSION: '8.4.23'
+# CAMUNDA_CONNECTORS_VERSION: '8.4.21'
+# POSTGRES_VERSION: '14.5-alpine'
+# ELASTIC_VERSION: '8.12.2'
+
+# CAMUNDA_IDENTITY_VERSION: 8.4.23
+# CAMUNDA_OPTIMIZE_VERSION: 8.4.20
+# CAMUNDA_WEBMODULE_VERSION: 8.4.19
+# KEYCLOAK_SERVER_VERSION: 21.1.2
+# MAILPIT_VERSION: v1.9.9
+# ZEEBE_AUTHENTICATION_MODE: none
+# ZEEBE_CLIENT_ID: zeeba
+# ZEEBE_CLIENT_SECRET: secret
+# RESOURCE_AUTHORIZATIONS_ENABLED: false
+# MULTI_TENANCY_ENABLED: false
 
 services:
 
-  # PostgreSQL Database
   postgres:
     image: postgres:15-alpine
     container_name: postgres_db
@@ -17,234 +33,152 @@ services:
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: admin123
       POSTGRES_DB: dwh_db
-#      POSTGRES_INITDB_ARGS: "-c max_connections=200 -c shared_buffers=256MB"
+    #      POSTGRES_INITDB_ARGS: "-c max_connections=200 -c shared_buffers=256MB"
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U admin -d dwh_db" ]
       interval: 10s
       timeout: 5s
       retries: 5
     networks:
-      - camunda-network
+      - camunda-platform
 
-  # Elasticsearch (required by Camunda 8)
-  elasticsearch:
-    image: elasticsearch:8.19.14
-    container_name: elasticsearch
-    hostname: elasticsearch
-    ports:
-      - "9200:9200"
-    volumes:
-      - elasticsearch_data:/usr/share/elasticsearch/data
-    environment:
-      - discovery.type=single-node
-      - xpack.security.enabled=false
-      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
-#    healthcheck:
-#      test: [ "CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1" ]
-#      interval: 10s
-#      timeout: 5s
-#      retries: 5
-    healthcheck:
-      test: [ "CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -q '\"status\"'" ]
-      interval: 10s
-      timeout: 5s
-      retries: 30
-    networks:
-      - camunda-network
-
-  # Zeebe (Camunda 8 Process Engine)
-  zeebe:
-    image: camunda/zeebe:8.2.0
+  zeebe: # https://docs.camunda.io/docs/self-managed/platform-deployment/docker/#zeebe
+    image: camunda/zeebe:8.4.21
     container_name: zeebe
-    hostname: zeebe
     ports:
-      - "26500:26500"  # gRPC
-      - "9600:9600"    # HTTP
-    volumes:
-      - zeebe_data:/var/lib/zeebe
-    environment:
+      - "26500:26500"
+      - "9600:9600"
+    environment: # https://docs.camunda.io/docs/self-managed/zeebe-deployment/configuration/environment-variables/
       - ZEEBE_BROKER_EXPORTERS_ELASTICSEARCH_CLASSNAME=io.camunda.zeebe.exporter.ElasticsearchExporter
       - ZEEBE_BROKER_EXPORTERS_ELASTICSEARCH_ARGS_URL=http://elasticsearch:9200
-      - ZEEBE_BROKER_EXPORTERS_ELASTICSEARCH_ARGS_INDEX_PREFIX=zeebe-record
-      - ZEEBE_BROKER_NETWORK_ADVERTISEDHOST=zeebe
-      - ZEEBE_BROKER_GATEWAY_NETWORK_HOST=0.0.0.0
-      - ZEEBE_BROKER_GATEWAY_NETWORK_PORT=26500
-      - ZEEBE_BROKER_GATEWAY_LONGPOLLING_ENABLED=true
-    depends_on:
-      elasticsearch:
-        condition: service_healthy
+      # default is 1000, see here: https://github.com/camunda/zeebe/blob/main/exporters/elasticsearch-exporter/src/main/java/io/camunda/zeebe/exporter/ElasticsearchExporterConfiguration.java#L259
+      - ZEEBE_BROKER_EXPORTERS_ELASTICSEARCH_ARGS_BULK_SIZE=1
+      # allow running with low disk space
+      - ZEEBE_BROKER_DATA_DISKUSAGECOMMANDWATERMARK=0.998
+      - ZEEBE_BROKER_DATA_DISKUSAGEREPLICATIONWATERMARK=0.999
+      - ZEEBE_CLIENT_SECURITY_PLAINTEXT=true
+      - "JAVA_TOOL_OPTIONS=-Xms512m -Xmx512m"
+    restart: always
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:9600/actuator/health" ]
-      interval: 10s
+      test: [ "CMD-SHELL", "timeout 10s bash -c ':> /dev/tcp/127.0.0.1/9600' || exit 1" ]
+      interval: 30s
       timeout: 5s
       retries: 5
-    networks:
-      - camunda-network
-
-  # Camunda Operate (UI for Process Monitoring)
-  operate:
-    image: camunda/operate:8.2.0
-    container_name: operate
-    hostname: operate
-    ports:
-      - "8080:8080"
+      start_period: 30s
     volumes:
-      - operate_data:/opt/operate/data
-    environment:
-      - CAMUNDA_OPERATE_ZEEBE_GATEWAYADDRESS=zeebe:26500
-      - CAMUNDA_OPERATE_ELASTICSEARCH_HOST=elasticsearch
-      - CAMUNDA_OPERATE_ELASTICSEARCH_PORT=9200
-      - SPRING_PROFILES_ACTIVE=docker
-      - SERVER_SERVLET_CONTEXT_PATH=/operate
-      - CAMUNDA_OPERATE_WEBAPP_LOGOUTURL=/
-    depends_on:
-      zeebe:
-        condition: service_healthy
-      elasticsearch:
-        condition: service_healthy
-    healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:8080/operate/actuator/health" ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      - zeebe:/usr/local/zeebe/data
     networks:
-      - camunda-network
+      - camunda-platform
+    depends_on:
+      - elasticsearch
 
-  # Camunda Tasklist (UI for User Tasks)
-  tasklist:
-    image: camunda/tasklist:8.2.0
-    container_name: tasklist
-    hostname: tasklist
+  operate: # https://docs.camunda.io/docs/self-managed/platform-deployment/docker/#operate
+    image: camunda/operate:8.4.21
+    container_name: operate
     ports:
       - "8081:8080"
-    volumes:
-      - tasklist_data:/opt/tasklist/data
-    environment:
-      - CAMUNDA_TASKLIST_ZEEBE_GATEWAYADDRESS=zeebe:26500
-      - CAMUNDA_TASKLIST_ELASTICSEARCH_HOST=elasticsearch
-      - CAMUNDA_TASKLIST_ELASTICSEARCH_PORT=9200
-      - SPRING_PROFILES_ACTIVE=docker
-      - SERVER_SERVLET_CONTEXT_PATH=/tasklist
-      - CAMUNDA_TASKLIST_WEBAPP_LOGOUTURL=/
-    depends_on:
-      zeebe:
-        condition: service_healthy
-      elasticsearch:
-        condition: service_healthy
+    environment: # https://docs.camunda.io/docs/self-managed/operate-deployment/configuration/
+      - CAMUNDA_OPERATE_ZEEBE_GATEWAYADDRESS=zeebe:26500
+      - CAMUNDA_OPERATE_ELASTICSEARCH_URL=http://elasticsearch:9200
+      - CAMUNDA_OPERATE_ZEEBEELASTICSEARCH_URL=http://elasticsearch:9200
+      - CAMUNDA_OPERATE_CSRFPREVENTIONENABLED=false
+      - management.endpoints.web.exposure.include=health
+      - management.endpoint.health.probes.enabled=true
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:8081/tasklist/actuator/health" ]
-      interval: 10s
-      timeout: 5s
+      test: [ "CMD-SHELL", "wget -O - -q 'http://localhost:8080/actuator/health/readiness'" ]
+      interval: 30s
+      timeout: 1s
       retries: 5
+      start_period: 30s
     networks:
-      - camunda-network
+      - camunda-platform
+    depends_on:
+      - zeebe
+      - elasticsearch
 
-  # Camunda Identity (User & Role Management)
-#  identity:
-#    image: camunda/identity:8.2.0
-#    container_name: identity
-#    hostname: identity
-#    ports:
-#      - "8082:8080"
-#    volumes:
-#      - identity_data:/opt/identity/data
-#    environment:
-#      - SPRING_PROFILES_ACTIVE=docker,postgres
-#      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/dwh_db
-#      - SPRING_DATASOURCE_USERNAME=admin
-#      - SPRING_DATASOURCE_PASSWORD=admin123
-#      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
-#      - KEYCLOAK_INIT_ADMIN_USERNAME=admin
-#      - KEYCLOAK_INIT_ADMIN_PASSWORD=admin123
-#      - SERVER_SERVLET_CONTEXT_PATH=/identity
-#      - CAMUNDA_IDENTITY_BASEURL=http://localhost:8082/identity
-#    depends_on:
-#      postgres:
-#        condition: service_healthy
-#    healthcheck:
-#      test: [ "CMD", "curl", "-f", "http://localhost:8082/identity/actuator/health" ]
-#      interval: 10s
-#      timeout: 5s
-#      retries: 5
-#    networks:
-#      - camunda-network
+  tasklist: # https://docs.camunda.io/docs/self-managed/platform-deployment/docker/#tasklist
+    image: camunda/tasklist:8.4.21
+    container_name: tasklist
+    ports:
+      - "8082:8080"
+    environment: # https://docs.camunda.io/docs/self-managed/tasklist-deployment/configuration/
+      - CAMUNDA_TASKLIST_ZEEBE_GATEWAYADDRESS=zeebe:26500
+      - CAMUNDA_TASKLIST_ELASTICSEARCH_URL=http://elasticsearch:9200
+      - CAMUNDA_TASKLIST_ZEEBEELASTICSEARCH_URL=http://elasticsearch:9200
+      - CAMUNDA_TASKLIST_CSRFPREVENTIONENABLED=false
+      - management.endpoints.web.exposure.include=health
+      - management.endpoint.health.probes.enabled=true
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -O - -q 'http://localhost:8080/actuator/health/readiness'" ]
+      interval: 30s
+      timeout: 1s
+      retries: 5
+      start_period: 30s
+    networks:
+      - camunda-platform
+    depends_on:
+      - zeebe
+      - elasticsearch
 
-  # Spring Boot Application
-#  spring-boot-app:
-#    build:
-#      context: .
-#      dockerfile: Dockerfile
-#    container_name: spring_boot_app
-#    hostname: spring-boot-app
-#    ports:
-#      - "8085:8085"
-#    volumes:
-#      - app_logs:/app/logs
-#      - app_data:/app/data
-#    environment:
-#      # Database
-#      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/dwh_db
-#      SPRING_DATASOURCE_USERNAME: admin
-#      SPRING_DATASOURCE_PASSWORD: admin123
-#      SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
-#
-#      # JPA/Hibernate
-#      SPRING_JPA_HIBERNATE_DDL_AUTO: update
-#      SPRING_JPA_DATABASE_PLATFORM: org.hibernate.dialect.PostgreSQL10Dialect
-#      SPRING_JPA_SHOW_SQL: "false"
-#
-#      # Camunda
-#      CAMUNDA_CLIENT_ZEEBE_GATEWAYADDRESS: zeebe:26500
-#      CAMUNDA_CLIENT_ZEEBE_RESTADDRESS: http://zeebe:9600
-#      CAMUNDA_CLIENT_OAUTH_TOKEN_AUDIENCE: zeebe
-#      CAMUNDA_CLIENT_OAUTH_ISSUER_URL: http://identity:8080/auth/realms/camunda-platform
-#      CAMUNDA_CLIENT_OAUTH_CLIENT_ID: zeebe
-#      CAMUNDA_CLIENT_OAUTH_CLIENT_SECRET: zecret
-#
-#      # Server
-#      SERVER_PORT: 8085
-#      SERVER_SERVLET_CONTEXT_PATH: /
-#
-#      # Logging
-#      LOGGING_LEVEL_ROOT: INFO
-#      LOGGING_LEVEL_COM_EXAMPLE: DEBUG
-#      LOGGING_FILE_NAME: /app/logs/application.log
-#
-#      # Application
-#      SPRING_PROFILES_ACTIVE: docker
-#    depends_on:
-#      postgres:
-#        condition: service_healthy
-#      zeebe:
-#        condition: service_healthy
-#      identity:
-#        condition: service_healthy
-#    healthcheck:
-#      test: [ "CMD", "curl", "-f", "http://localhost:8085/actuator/health" ]
-#      interval: 10s
-#      timeout: 5s
-#      retries: 5
-#    networks:
-#      - camunda-network
+  connectors: # https://docs.camunda.io/docs/components/integration-framework/connectors/out-of-the-box-connectors/available-connectors-overview/
+    image: camunda/connectors-bundle:8.4.21
+    container_name: connectors
+    ports:
+      - "8085:8080"
+    environment:
+      - ZEEBE_CLIENT_BROKER_GATEWAY_ADDRESS=zeebe:26500
+      - ZEEBE_CLIENT_SECURITY_PLAINTEXT=true
+      - CAMUNDA_OPERATE_CLIENT_URL=http://operate:8080
+      - CAMUNDA_OPERATE_CLIENT_BASEURL=http://operate:8080
+      - CAMUNDA_OPERATE_CLIENT_USERNAME=demo
+      - CAMUNDA_OPERATE_CLIENT_PASSWORD=demo
+      - management.endpoints.web.exposure.include=health
+      - management.endpoint.health.probes.enabled=true
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -f http://localhost:8080/actuator/health/readiness" ]
+      interval: 30s
+      timeout: 1s
+      retries: 5
+      start_period: 30s
+    #    env_file: connector-secrets.txt
+    networks:
+      - camunda-platform
+    depends_on:
+      - zeebe
+      - operate
+
+  elasticsearch: # https://hub.docker.com/_/elasticsearch
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.12.2
+    container_name: elasticsearch
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    environment:
+      - bootstrap.memory_lock=true
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      # allow running with low disk space
+      - cluster.routing.allocation.disk.threshold_enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    restart: always
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -f http://localhost:9200/_cat/health | grep -q green" ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    volumes:
+      - elastic:/usr/share/elasticsearch/data
+    networks:
+      - camunda-platform
 
 volumes:
+  zeebe:
+  elastic:
   postgres_data:
-    driver: local
-  elasticsearch_data:
-    driver: local
-  zeebe_data:
-    driver: local
-  operate_data:
-    driver: local
-  tasklist_data:
-    driver: local
-  identity_data:
-    driver: local
-  app_logs:
-    driver: local
-  app_data:
-    driver: local
 
 networks:
-  camunda-network:
-    driver: bridge
+  camunda-platform:

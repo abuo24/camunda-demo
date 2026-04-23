@@ -37,7 +37,7 @@ spring:
 
 # Server Configuration
 server:
-  port: 8085
+  port: 8090
   servlet:
     context-path: /
   compression:
@@ -48,22 +48,13 @@ server:
 camunda:
   client:
     zeebe:
-      gatewayAddress: localhost:26500
-#      restAddress: http://localhost:9600
+      gatewayAddress: localhost:26500  # ? Container name
       security:
-        plaintext: true
-#      insecure: true
-#      plaintext: true
-#    oauth:
-#      token:
-#        audience: zeebe
-#      issuer:
-#        url: http://localhost:8082/identity/auth/realms/camunda-platform
-#      clientId: spring-boot-app
-#      clientSecret: secret
-    # Disable OAuth for local development
+        plaintext: true  # ? NO SSL/TLS
+#        insecure: true
+      requestTimeout: 45000
     auth:
-      enabled: false
+      enabled: false  # ? No OAuth
 
 
 # Logging Configuration
