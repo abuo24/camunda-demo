@@ -232,13 +232,5 @@ class ProcessController(
         }
     }
 
-    /**
-     * GET /api/v1/health
-     * Health check endpoint
-     */
-    @GetMapping("/health")
-    fun healthCheck(): ResponseEntity<Map<String, String>> {
-        return ResponseEntity.ok(mapOf("status" to "UP"))
-    }
 }
 

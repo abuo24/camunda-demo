@@ -1,107 +1,58 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
-                   xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
-                   xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
-                   xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
-                   xmlns:zeebe="http://camunda.org/schema/zeebe/1.0"
-                   xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
-                   id="order-process_definition"
-                   targetNamespace="http://bpmn.io/schema/bpmn">
+                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+                  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+                  xmlns:zeebe="http://camunda.org/schema/zeebe/1.0"
+                  id="Definitions_1"
+                  targetNamespace="http://bpmn.io/schema/bpmn">
 
-  <bpmn:process id="order-process" name="Order Processing Process" isExecutable="true">
-    <!-- Start Event -->
-    <bpmn:startEvent id="StartEvent" name="Start Order">
-      <bpmn:outgoing>SequenceFlow1</bpmn:outgoing>
+  <bpmn:process id="order-process" isExecutable="true">
+
+    <bpmn:startEvent id="StartEvent">
+      <bpmn:outgoing>flow1</bpmn:outgoing>
     </bpmn:startEvent>
 
-    <!-- Validate Product Task -->
-    <bpmn:serviceTask id="ValidateProduct" name="Validate Product">
-      <bpmn:incoming>SequenceFlow1</bpmn:incoming>
-      <bpmn:outgoing>SequenceFlow2</bpmn:outgoing>
-      <zeebe:taskDefinition type="validate-product" retries="3" />
+    <bpmn:serviceTask id="ValidateProduct">
+      <bpmn:incoming>flow1</bpmn:incoming>
+      <bpmn:outgoing>flow2</bpmn:outgoing>
+
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="validate-product" retries="3"/>
+      </bpmn:extensionElements>
+
     </bpmn:serviceTask>
 
-    <!-- Exclusive Gateway for Validation -->
-    <bpmn:exclusiveGateway id="ExclusiveGateway_Validation" name="Is Valid?" default="SequenceFlow_InvalidPath">
-      <bpmn:incoming>SequenceFlow2</bpmn:incoming>
-      <bpmn:outgoing>SequenceFlow_ValidPath</bpmn:outgoing>
-      <bpmn:outgoing>SequenceFlow_InvalidPath</bpmn:outgoing>
+    <bpmn:exclusiveGateway id="Gateway">
+      <bpmn:incoming>flow2</bpmn:incoming>
+      <bpmn:outgoing>flow3</bpmn:outgoing>
+      <bpmn:outgoing>flow4</bpmn:outgoing>
     </bpmn:exclusiveGateway>
 
-    <!-- Create Order Task -->
-    <bpmn:serviceTask id="CreateOrder" name="Create Order">
-      <bpmn:incoming>SequenceFlow_ValidPath</bpmn:incoming>
-      <bpmn:outgoing>SequenceFlow3</bpmn:outgoing>
-      <zeebe:taskDefinition type="create-order" retries="3" />
+    <bpmn:serviceTask id="CreateOrder">
+      <bpmn:incoming>flow3</bpmn:incoming>
+      <bpmn:outgoing>flow5</bpmn:outgoing>
+
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="create-order" retries="3"/>
+      </bpmn:extensionElements>
+
     </bpmn:serviceTask>
 
-    <!-- Send Notification Task -->
-    <bpmn:serviceTask id="SendNotification" name="Send Notification">
-      <bpmn:incoming>SequenceFlow3</bpmn:incoming>
-      <bpmn:outgoing>SequenceFlow4</bpmn:outgoing>
-      <zeebe:taskDefinition type="send-notification" retries="2" />
-    </bpmn:serviceTask>
-
-    <!-- User Task: Approve Order -->
-    <bpmn:userTask id="ApproveOrder" name="Approve Order">
-      <bpmn:incoming>SequenceFlow4</bpmn:incoming>
-      <bpmn:outgoing>SequenceFlow5</bpmn:outgoing>
-    </bpmn:userTask>
-
-    <!-- Fulfill Order Task -->
-    <bpmn:serviceTask id="FulfillOrder" name="Fulfill Order">
-      <bpmn:incoming>SequenceFlow5</bpmn:incoming>
-      <bpmn:outgoing>SequenceFlow6</bpmn:outgoing>
-      <zeebe:taskDefinition type="fulfill-order" retries="3" />
-    </bpmn:serviceTask>
-
-    <!-- End Event: Success -->
-    <bpmn:endEvent id="EndEvent_Success" name="Order Complete">
-      <bpmn:incoming>SequenceFlow6</bpmn:incoming>
+    <bpmn:endEvent id="EndSuccess">
+      <bpmn:incoming>flow5</bpmn:incoming>
     </bpmn:endEvent>
 
-    <!-- End Event: Failure -->
-    <bpmn:endEvent id="EndEvent_Failure" name="Order Rejected">
-      <bpmn:incoming>SequenceFlow_InvalidPath</bpmn:incoming>
+    <bpmn:endEvent id="EndFail">
+      <bpmn:incoming>flow4</bpmn:incoming>
     </bpmn:endEvent>
 
-    <!-- Sequence Flows -->
-    <bpmn:sequenceFlow id="SequenceFlow1" sourceRef="StartEvent" targetRef="ValidateProduct" />
-    <bpmn:sequenceFlow id="SequenceFlow2" sourceRef="ValidateProduct" targetRef="ExclusiveGateway_Validation" />
-    <bpmn:sequenceFlow id="SequenceFlow_ValidPath" sourceRef="ExclusiveGateway_Validation" targetRef="CreateOrder">
-      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">=isValid</bpmn:conditionExpression>
-    </bpmn:sequenceFlow>
-    <bpmn:sequenceFlow id="SequenceFlow_InvalidPath" sourceRef="ExclusiveGateway_Validation" targetRef="EndEvent_Failure" />
-    <bpmn:sequenceFlow id="SequenceFlow3" sourceRef="CreateOrder" targetRef="SendNotification" />
-    <bpmn:sequenceFlow id="SequenceFlow4" sourceRef="SendNotification" targetRef="ApproveOrder" />
-    <bpmn:sequenceFlow id="SequenceFlow5" sourceRef="ApproveOrder" targetRef="FulfillOrder" />
-    <bpmn:sequenceFlow id="SequenceFlow6" sourceRef="FulfillOrder" targetRef="EndEvent_Success" />
+    <!-- FLOWS -->
+    <bpmn:sequenceFlow id="flow1" sourceRef="StartEvent" targetRef="ValidateProduct"/>
+    <bpmn:sequenceFlow id="flow2" sourceRef="ValidateProduct" targetRef="Gateway"/>
+    <bpmn:sequenceFlow id="flow3" sourceRef="Gateway" targetRef="CreateOrder"/>
+    <bpmn:sequenceFlow id="flow4" sourceRef="Gateway" targetRef="EndFail"/>
+    <bpmn:sequenceFlow id="flow5" sourceRef="CreateOrder" targetRef="EndSuccess"/>
+
   </bpmn:process>
-
-  <!-- Diagram Information (optional) -->
-  <bpmndi:BPMNDiagram id="BPMNDiagram_1" name="Order Processing">
-    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="order-process">
-      <bpmndi:BPMNShape id="BPMNShape_StartEvent" bpmnElement="StartEvent">
-        <dc:Bounds x="100" y="100" width="36" height="36" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_ValidateProduct" bpmnElement="ValidateProduct">
-        <dc:Bounds x="200" y="80" width="100" height="80" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_CreateOrder" bpmnElement="CreateOrder">
-        <dc:Bounds x="400" y="80" width="100" height="80" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_SendNotification" bpmnElement="SendNotification">
-        <dc:Bounds x="580" y="80" width="100" height="80" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_ApproveOrder" bpmnElement="ApproveOrder">
-        <dc:Bounds x="760" y="80" width="100" height="80" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_FulfillOrder" bpmnElement="FulfillOrder">
-        <dc:Bounds x="940" y="80" width="100" height="80" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_EndEvent_Success" bpmnElement="EndEvent_Success">
-        <dc:Bounds x="1120" y="106" width="36" height="36" />
-      </bpmndi:BPMNShape>
-    </bpmndi:BPMNPlane>
-  </bpmndi:BPMNDiagram>
 </bpmn:definitions>

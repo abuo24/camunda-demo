@@ -2,6 +2,7 @@ spring:
   application:
     name: camunda-demo
 
+
   # Database Configuration
   datasource:
     url: jdbc:postgresql://localhost:5433/dwh_db
@@ -35,6 +36,9 @@ spring:
       write-dates-as-timestamps: false
       indent-output: true
 
+  main:
+    allow-bean-definition-overriding: true
+
 # Server Configuration
 server:
   port: 8090
@@ -49,9 +53,10 @@ camunda:
   client:
     zeebe:
       gatewayAddress: localhost:26500  # ? Container name
+      restAddress: http://localhost:9600
       security:
         plaintext: true  # ? NO SSL/TLS
-#        insecure: true
+      #        insecure: true
       requestTimeout: 45000
     auth:
       enabled: false  # ? No OAuth
@@ -100,3 +105,13 @@ app:
       max-backoff: 5000
   database:
     init-on-startup: true
+
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: alpha
+  api-docs:
+    path: /api-docs
+

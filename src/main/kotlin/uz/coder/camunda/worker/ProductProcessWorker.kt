@@ -21,7 +21,7 @@ class ProductProcessWorker(
     /**
      * Process validate product task
      */
-    @JobWorker(type = "validate-product", autoComplete = false)
+//    @JobWorker(type = "validate-product", autoComplete = false)
     fun validateProduct(job: ActivatedJob, client: ZeebeClient) {
         try {
             logger.info("Starting validate-product task for process: ${job.processInstanceKey}")
@@ -60,7 +60,7 @@ class ProductProcessWorker(
     /**
      * Process create order task
      */
-    @JobWorker(type = "create-order", autoComplete = false)
+//    @JobWorker(type = "create-order", autoComplete = false)
     fun createOrder(job: ActivatedJob, client: ZeebeClient) {
         try {
             logger.info("Starting create-order task for process: ${job.processInstanceKey}")
@@ -109,7 +109,7 @@ class ProductProcessWorker(
     /**
      * Process send notification task
      */
-    @JobWorker(type = "send-notification", autoComplete = false)
+//    @JobWorker(type = "send-notification", autoComplete = false)
     fun sendNotification(job: ActivatedJob, client: ZeebeClient) {
         try {
             logger.info("Starting send-notification task for process: ${job.processInstanceKey}")
@@ -149,7 +149,7 @@ class ProductProcessWorker(
     /**
      * Process fulfill order task
      */
-    @JobWorker(type = "fulfill-order", autoComplete = false)
+//    @JobWorker(type = "fulfill-order", autoComplete = false)
     fun fulfillOrder(job: ActivatedJob, client: ZeebeClient) {
         try {
             logger.info("Starting fulfill-order task for process: ${job.processInstanceKey}")

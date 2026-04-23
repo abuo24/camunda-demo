@@ -6,6 +6,7 @@ import uz.coder.camunda.repository.ProcessInstanceRepository
 import uz.coder.camunda.repository.UserTaskRepository
 import io.camunda.zeebe.client.ZeebeClient
 import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDateTime
@@ -17,6 +18,7 @@ import java.util.Collections.emptyMap
 @Service
 @Transactional
 class CamundaProcessService(
+    @Qualifier("secondZeebeClient")
     private val zeebeClient: ZeebeClient,
     private val processInstanceRepository: ProcessInstanceRepository,
     private val userTaskRepository: UserTaskRepository
