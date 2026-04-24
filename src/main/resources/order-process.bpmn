@@ -4,55 +4,76 @@
                   xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
                   xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
                   xmlns:zeebe="http://camunda.org/schema/zeebe/1.0"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                   id="Definitions_1"
-                  targetNamespace="http://bpmn.io/schema/bpmn">
+                  targetNamespace="http://camunda.org/schema/bpmn"
+                  exporter="Camunda Web Modeler"
+                  exporterVersion="5.14.0"
+                  xsi:schemaLocation="http://www.omg.org/spec/BPMN/20100524/MODEL http://www.omg.org/spec/BPMN/20100524/BPMN20.xsd">
 
-  <bpmn:process id="order-process" isExecutable="true">
+  <bpmn:process id="order-process" name="Order Processing" isExecutable="true">
+    <bpmn:documentation>Process to validate products and create orders</bpmn:documentation>
 
-    <bpmn:startEvent id="StartEvent">
-      <bpmn:outgoing>flow1</bpmn:outgoing>
+    <!-- Start Event -->
+    <bpmn:startEvent id="StartEvent_1" name="Start Order">
+      <bpmn:outgoing>Flow_1</bpmn:outgoing>
     </bpmn:startEvent>
 
-    <bpmn:serviceTask id="ValidateProduct">
-      <bpmn:incoming>flow1</bpmn:incoming>
-      <bpmn:outgoing>flow2</bpmn:outgoing>
-
-      <bpmn:extensionElements>
-        <zeebe:taskDefinition type="validate-product" retries="3"/>
-      </bpmn:extensionElements>
-
+    <!-- Validate Product Task -->
+    <bpmn:serviceTask id="Task_Validate" name="Validate Product">
+      <bpmn:incoming>Flow_1</bpmn:incoming>
+      <bpmn:outgoing>Flow_2</bpmn:outgoing>
+      <zeebe:taskDefinition type="validate-product" retries="3" />
     </bpmn:serviceTask>
 
-    <bpmn:exclusiveGateway id="Gateway">
-      <bpmn:incoming>flow2</bpmn:incoming>
-      <bpmn:outgoing>flow3</bpmn:outgoing>
-      <bpmn:outgoing>flow4</bpmn:outgoing>
+    <!-- Gateway to Check Validation Result -->
+    <bpmn:exclusiveGateway id="Gateway_ValidateResult" name="Product Valid?">
+      <bpmn:incoming>Flow_2</bpmn:incoming>
+      <bpmn:outgoing>Flow_Valid</bpmn:outgoing>
+      <bpmn:outgoing>Flow_Invalid</bpmn:outgoing>
     </bpmn:exclusiveGateway>
 
-    <bpmn:serviceTask id="CreateOrder">
-      <bpmn:incoming>flow3</bpmn:incoming>
-      <bpmn:outgoing>flow5</bpmn:outgoing>
-
-      <bpmn:extensionElements>
-        <zeebe:taskDefinition type="create-order" retries="3"/>
-      </bpmn:extensionElements>
-
+    <!-- Create Order Task (if valid) -->
+    <bpmn:serviceTask id="Task_CreateOrder" name="Create Order">
+      <bpmn:incoming>Flow_Valid</bpmn:incoming>
+      <bpmn:outgoing>Flow_3</bpmn:outgoing>
+      <zeebe:taskDefinition type="create-order" retries="3" />
     </bpmn:serviceTask>
 
-    <bpmn:endEvent id="EndSuccess">
-      <bpmn:incoming>flow5</bpmn:incoming>
+    <!-- Send Notification Task -->
+    <bpmn:serviceTask id="Task_SendNotification" name="Send Notification">
+      <bpmn:incoming>Flow_3</bpmn:incoming>
+      <bpmn:outgoing>Flow_4</bpmn:outgoing>
+      <zeebe:taskDefinition type="send-notification" retries="2" />
+    </bpmn:serviceTask>
+
+    <!-- Success End Event -->
+    <bpmn:endEvent id="EndEvent_Success" name="Order Created">
+      <bpmn:incoming>Flow_4</bpmn:incoming>
     </bpmn:endEvent>
 
-    <bpmn:endEvent id="EndFail">
-      <bpmn:incoming>flow4</bpmn:incoming>
+    <!-- Failure End Event (if validation fails) -->
+    <bpmn:endEvent id="EndEvent_Failure" name="Order Failed">
+      <bpmn:incoming>Flow_Invalid</bpmn:incoming>
     </bpmn:endEvent>
 
-    <!-- FLOWS -->
-    <bpmn:sequenceFlow id="flow1" sourceRef="StartEvent" targetRef="ValidateProduct"/>
-    <bpmn:sequenceFlow id="flow2" sourceRef="ValidateProduct" targetRef="Gateway"/>
-    <bpmn:sequenceFlow id="flow3" sourceRef="Gateway" targetRef="CreateOrder"/>
-    <bpmn:sequenceFlow id="flow4" sourceRef="Gateway" targetRef="EndFail"/>
-    <bpmn:sequenceFlow id="flow5" sourceRef="CreateOrder" targetRef="EndSuccess"/>
+    <!-- Sequence Flows -->
+    <bpmn:sequenceFlow id="Flow_1" sourceRef="StartEvent_1" targetRef="Task_Validate" />
+    <bpmn:sequenceFlow id="Flow_2" sourceRef="Task_Validate" targetRef="Gateway_ValidateResult" />
+
+    <!-- Valid path -->
+    <bpmn:sequenceFlow id="Flow_Valid" sourceRef="Gateway_ValidateResult" targetRef="Task_CreateOrder">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=isValid = true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+
+    <bpmn:sequenceFlow id="Flow_3" sourceRef="Task_CreateOrder" targetRef="Task_SendNotification" />
+    <bpmn:sequenceFlow id="Flow_4" sourceRef="Task_SendNotification" targetRef="EndEvent_Success" />
+
+    <!-- Invalid path -->
+    <bpmn:sequenceFlow id="Flow_Invalid" sourceRef="Gateway_ValidateResult" targetRef="EndEvent_Failure">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=isValid = false</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
 
   </bpmn:process>
+
 </bpmn:definitions>

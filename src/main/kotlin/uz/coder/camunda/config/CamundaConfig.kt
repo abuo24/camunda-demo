@@ -1,4 +1,4 @@
-package uz.coder.camunda.controller
+package uz.coder.camunda.config
 
 import io.camunda.zeebe.client.ZeebeClient
 import org.springframework.beans.factory.annotation.Value
@@ -22,10 +22,10 @@ class CamundaConfig {
             .gatewayAddress(gatewayAddress)
             .usePlaintext()
             .build()
-        client.newDeployResourceCommand()
-            .addResourceFromClasspath("order-process.bpmn")
-            .send()
-            .join()
+//        client.newDeployResourceCommand()
+//            .addResourceFromClasspath("order-process.bpmn")
+//            .send()
+//            .join()
         return client
     }
 
