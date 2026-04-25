@@ -2,7 +2,6 @@ spring:
   application:
     name: camunda-demo
 
-
   # Database Configuration
   datasource:
     url: jdbc:postgresql://localhost:5433/dwh_db
@@ -51,16 +50,18 @@ server:
 # Camunda Configuration
 camunda:
   client:
+    mode: simple
     zeebe:
-      gatewayAddress: localhost:26500  # ? Container name
-      restAddress: http://localhost:9600
+      gateway-url: http://localhost:26500
       security:
-        plaintext: true  # ? NO SSL/TLS
-      #        insecure: true
+        plaintext: true
       requestTimeout: 45000
+    operate:
+      enabled: false
+    tasklist:
+      enabled: false
     auth:
-      enabled: false  # ? No OAuth
-
+      enabled: false # No auth
 
 # Logging Configuration
 logging:
@@ -78,6 +79,7 @@ logging:
     max-size: 10MB
     max-history: 10
     total-size-cap: 1GB
+    clean-history-on-start: true
 
 # Management endpoints
 management:
@@ -114,4 +116,3 @@ springdoc:
     operations-sorter: alpha
   api-docs:
     path: /api-docs
-

@@ -1,5 +1,6 @@
 package uz.coder.camunda.worker
 
+import com.auth0.json.mgmt.client.Client
 import uz.coder.camunda.repository.ProcessInstanceRepository
 import io.camunda.zeebe.client.ZeebeClient
 import io.camunda.zeebe.client.api.response.ActivatedJob
@@ -13,7 +14,8 @@ import java.time.LocalDateTime
  */
 @Component
 class ProductProcessWorker(
-    private val processInstanceRepository: ProcessInstanceRepository
+    private val processInstanceRepository: ProcessInstanceRepository,
+    private val client: ZeebeClient
 ) {
 
     private val logger = LoggerFactory.getLogger(this::class.java)
@@ -21,14 +23,15 @@ class ProductProcessWorker(
     /**
      * Process validate product task
      */
-//    @JobWorker(type = "validate-product", autoComplete = false)
-    fun validateProduct(job: ActivatedJob, client: ZeebeClient) {
+    @JobWorker(type = "validate-product", autoComplete = false)
+    fun validateProduct(job: ActivatedJob) {
         try {
             logger.info("Starting validate-product task for process: ${job.processInstanceKey}")
+            logger.info("Job: ${job.variablesAsMap}")
 
             // Get variables from process
             val variables = job.variablesAsMap
-            val productId = variables["productId"] as? Long
+            val productId = variables["productId"] as? Int
             val productName = variables["productName"] as? String
 
             // Business logic: validate product
@@ -38,10 +41,12 @@ class ProductProcessWorker(
 
             // Complete job with variables
             client.newCompleteCommand(job.key)
-                .variables(mapOf(
-                    "isValid" to isValid,
-                    "validationTime" to System.currentTimeMillis()
-                ))
+                .variables(
+                    mapOf(
+                        "isValid" to isValid,
+                        "validationTime" to System.currentTimeMillis()
+                    )
+                )
                 .send()
                 .join()
 
@@ -60,13 +65,13 @@ class ProductProcessWorker(
     /**
      * Process create order task
      */
-//    @JobWorker(type = "create-order", autoComplete = false)
-    fun createOrder(job: ActivatedJob, client: ZeebeClient) {
+    @JobWorker(type = "create-order", autoComplete = false)
+    fun createOrder(job: ActivatedJob) {
         try {
             logger.info("Starting create-order task for process: ${job.processInstanceKey}")
 
             val variables = job.variablesAsMap
-            val productId = variables["productId"] as? Long
+            val productId = variables["productId"] as? Int
             val quantity = variables["quantity"] as? Int ?: 1
 
             // Business logic: create order
@@ -86,11 +91,13 @@ class ProductProcessWorker(
 
             // Complete job
             client.newCompleteCommand(job.key)
-                .variables(mapOf(
-                    "orderId" to orderId,
-                    "totalPrice" to totalPrice,
-                    "createdAt" to LocalDateTime.now().toString()
-                ))
+                .variables(
+                    mapOf(
+                        "orderId" to orderId,
+                        "totalPrice" to totalPrice,
+                        "createdAt" to LocalDateTime.now().toString()
+                    )
+                )
                 .send()
                 .join()
 
@@ -109,8 +116,8 @@ class ProductProcessWorker(
     /**
      * Process send notification task
      */
-//    @JobWorker(type = "send-notification", autoComplete = false)
-    fun sendNotification(job: ActivatedJob, client: ZeebeClient) {
+    @JobWorker(type = "send-notification", autoComplete = false)
+    fun sendNotification(job: ActivatedJob) {
         try {
             logger.info("Starting send-notification task for process: ${job.processInstanceKey}")
 
@@ -127,10 +134,12 @@ class ProductProcessWorker(
 
             // Complete job
             client.newCompleteCommand(job.key)
-                .variables(mapOf(
-                    "notificationSent" to true,
-                    "sentAt" to LocalDateTime.now().toString()
-                ))
+                .variables(
+                    mapOf(
+                        "notificationSent" to true,
+                        "sentAt" to LocalDateTime.now().toString()
+                    )
+                )
                 .send()
                 .join()
 
@@ -149,8 +158,8 @@ class ProductProcessWorker(
     /**
      * Process fulfill order task
      */
-//    @JobWorker(type = "fulfill-order", autoComplete = false)
-    fun fulfillOrder(job: ActivatedJob, client: ZeebeClient) {
+    @JobWorker(type = "fulfill-order", autoComplete = false)
+    fun fulfillOrder(job: ActivatedJob) {
         try {
             logger.info("Starting fulfill-order task for process: ${job.processInstanceKey}")
 
@@ -171,10 +180,12 @@ class ProductProcessWorker(
 
             // Complete job
             client.newCompleteCommand(job.key)
-                .variables(mapOf(
-                    "fulfilled" to true,
-                    "fulfilledAt" to LocalDateTime.now().toString()
-                ))
+                .variables(
+                    mapOf(
+                        "fulfilled" to true,
+                        "fulfilledAt" to LocalDateTime.now().toString()
+                    )
+                )
                 .send()
                 .join()
 

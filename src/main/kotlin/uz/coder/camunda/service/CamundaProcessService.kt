@@ -18,7 +18,6 @@ import java.util.Collections.emptyMap
 @Service
 @Transactional
 class CamundaProcessService(
-    @Qualifier("secondZeebeClient")
     private val zeebeClient: ZeebeClient,
     private val processInstanceRepository: ProcessInstanceRepository,
     private val userTaskRepository: UserTaskRepository
