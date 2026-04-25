@@ -147,6 +147,62 @@ services:
       - zeebe
       - operate
 
+#
+#  modeler-db:
+#    image: postgres:15-alpine
+#    container_name: modeler-db
+#    environment:
+#      POSTGRES_DB: modeler
+#      POSTGRES_USER: modeler
+#      POSTGRES_PASSWORD: modeler
+#    volumes:
+#      - modeler_db_data:/var/lib/postgresql/data
+#    networks:
+#      - camunda-platform
+#
+#  modeler-restapi:
+#    image: camunda/web-modeler-restapi:8.6.0
+#    container_name: modeler-restapi
+#    environment:
+#      - CAMUNDA_MODELER_SERVER_URL=http://localhost:8086
+#      - SPRING_DATASOURCE_URL=jdbc:postgresql://modeler-db:5432/modeler
+#      - SPRING_PROFILES_ACTIVE=identity-auth-disabled
+#      - CAMUNDA_MODELER_SECURITY_ENABLED=false
+#      - CAMUNDA_MODELER_IDENTITY_ISSUER=http://dummy
+#      - CAMUNDA_MODELER_IDENTITY_JWKS_URL=http://dummy
+#      - SPRING_FLYWAY_BASELINE_ON_MIGRATE=true
+#      - SPRING_FLYWAY_BASELINE_VERSION=0
+#      - SPRING_DATASOURCE_USERNAME=modeler
+#      - SPRING_DATASOURCE_PASSWORD=modeler
+#      - CAMUNDA_MODELER_STORAGE=local
+#      - CAMUNDA_MODELER_STORAGE_LOCAL_ROOT=/app/data
+#      - CAMUNDA_MODELER_MAIL_FROMADDRESS=noreply@local.dev
+#      - CAMUNDA_MODELER_MAIL_ENABLED=false
+#      - CAMUNDA_MODELER_PUSHER_ENABLED=false
+#      - CAMUNDA_MODELER_PUSHER_HOST=localhost
+#      - CAMUNDA_MODELER_PUSHER_PORT=80
+#      - CAMUNDA_MODELER_PUSHER_KEY=dummy
+#      - CAMUNDA_MODELER_PUSHER_SECRET=dummy
+#      - CAMUNDA_MODELER_PUSHER_APP_ID=dummy
+#    volumes:
+#      - modeler_data:/app/data
+#    networks:
+#      - camunda-platform
+#    depends_on:
+#      - modeler-db
+#
+#  modeler:
+#    image: camunda/web-modeler-webapp:8.6.0
+#    container_name: modeler
+#    ports:
+#      - "8086:8080"
+#    environment:
+#      - MODELER_RESTAPI_URL=http://modeler-restapi:8080
+#    networks:
+#      - camunda-platform
+#    depends_on:
+#      - modeler-restapi
+
   elasticsearch: # https://hub.docker.com/_/elasticsearch
     image: docker.elastic.co/elasticsearch/elasticsearch:8.14.0
     container_name: elasticsearch
@@ -179,6 +235,8 @@ volumes:
   zeebe:
   elastic:
   postgres_data:
+  modeler_db_data:
+  modeler_data:
 
 networks:
   camunda-platform:
