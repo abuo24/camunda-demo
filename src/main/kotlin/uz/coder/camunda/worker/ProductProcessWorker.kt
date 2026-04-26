@@ -1,6 +1,7 @@
 package uz.coder.camunda.worker
 
 import com.auth0.json.mgmt.client.Client
+import com.fasterxml.jackson.databind.ObjectMapper
 import uz.coder.camunda.repository.ProcessInstanceRepository
 import io.camunda.zeebe.client.ZeebeClient
 import io.camunda.zeebe.client.api.response.ActivatedJob
@@ -15,38 +16,41 @@ import java.time.LocalDateTime
 @Component
 class ProductProcessWorker(
     private val processInstanceRepository: ProcessInstanceRepository,
-    private val client: ZeebeClient
+    private val client: ZeebeClient,
+    private val objectMapper: ObjectMapper
 ) {
 
     private val logger = LoggerFactory.getLogger(this::class.java)
 
     /**
-     * Process validate product task
+     * Deserializes directly to data class instead of casting
+     */
+    private inline fun <reified T> getVariablesAs(job: ActivatedJob): T {
+        return objectMapper.convertValue(job.variablesAsMap, T::class.java)
+    }
+
+    /**
+     * Validate product task
      */
     @JobWorker(type = "validate-product", autoComplete = false)
     fun validateProduct(job: ActivatedJob) {
         try {
             logger.info("Starting validate-product task for process: ${job.processInstanceKey}")
-            logger.info("Job: ${job.variablesAsMap}")
 
-            // Get variables from process
-            val variables = job.variablesAsMap
-            val productId = variables["productId"] as? Int
-            val productName = variables["productName"] as? String
+            val input = getVariablesAs<ValidateProductInput>(job)
 
-            // Business logic: validate product
-            val isValid = productName?.isNotBlank() == true && productId != null && productId > 0
+            val isValid = input.productName?.isNotBlank() == true && input.productId > 0
 
-            logger.info("Product validation result: $isValid")
+            logger.info("Product validation result: $isValid for product: ${input.productId}")
 
-            // Complete job with variables
+            val output = ValidateProductOutput(
+                isValid = isValid,
+                validationTime = System.currentTimeMillis(),
+                productId = input.productId
+            )
+
             client.newCompleteCommand(job.key)
-                .variables(
-                    mapOf(
-                        "isValid" to isValid,
-                        "validationTime" to System.currentTimeMillis()
-                    )
-                )
+                .variables(output)
                 .send()
                 .join()
 
@@ -54,50 +58,37 @@ class ProductProcessWorker(
 
         } catch (e: Exception) {
             logger.error("Error in validate-product task", e)
-            client.newFailCommand(job.key)
-                .retries(job.retries - 1)
-                .errorMessage(e.message)
-                .send()
-                .join()
+            handleJobFailure(job, e)
         }
     }
 
     /**
-     * Process create order task
+     * Create order task
      */
     @JobWorker(type = "create-order", autoComplete = false)
     fun createOrder(job: ActivatedJob) {
         try {
             logger.info("Starting create-order task for process: ${job.processInstanceKey}")
 
-            val variables = job.variablesAsMap
-            val productId = variables["productId"] as? Int
-            val quantity = variables["quantity"] as? Int ?: 1
+            val input = getVariablesAs<CreateOrderInput>(job)
 
-            // Business logic: create order
             val orderId = "ORD-${System.currentTimeMillis()}"
-            val totalPrice = (variables["price"] as? Double ?: 0.0) * quantity
+            val totalPrice = input.price * input.quantity
 
-            logger.info("Order created: $orderId with quantity: $quantity")
+            logger.info("Order created: $orderId for product: ${input.productId}, qty: ${input.quantity}")
 
-            // Update process instance status
-            val processInstance = processInstanceRepository
-                .findByProcessInstanceId(job.processInstanceKey.toString())
-            if (processInstance != null) {
-                processInstance.status = "IN_PROGRESS"
-                processInstance.updatedAt = LocalDateTime.now()
-                processInstanceRepository.save(processInstance)
-            }
+            // Update process instance
+            updateProcessInstance(job.processInstanceKey, "IN_PROGRESS")
 
-            // Complete job
+            val output = CreateOrderOutput(
+                orderId = orderId,
+                totalPrice = totalPrice,
+                createdAt = LocalDateTime.now(),
+                productId = input.productId
+            )
+
             client.newCompleteCommand(job.key)
-                .variables(
-                    mapOf(
-                        "orderId" to orderId,
-                        "totalPrice" to totalPrice,
-                        "createdAt" to LocalDateTime.now().toString()
-                    )
-                )
+                .variables(output)
                 .send()
                 .join()
 
@@ -105,41 +96,33 @@ class ProductProcessWorker(
 
         } catch (e: Exception) {
             logger.error("Error in create-order task", e)
-            client.newFailCommand(job.key)
-                .retries(job.retries - 1)
-                .errorMessage(e.message)
-                .send()
-                .join()
+            handleJobFailure(job, e)
         }
     }
 
     /**
-     * Process send notification task
+     * Send notification task
      */
     @JobWorker(type = "send-notification", autoComplete = false)
     fun sendNotification(job: ActivatedJob) {
         try {
             logger.info("Starting send-notification task for process: ${job.processInstanceKey}")
 
-            val variables = job.variablesAsMap
-            val orderId = variables["orderId"] as? String
-            val email = variables["email"] as? String
-            val notificationType = variables["type"] as? String ?: "EMAIL"
+            val input = getVariablesAs<SendNotificationInput>(job)
 
-            // Business logic: send notification
-            logger.info("Sending $notificationType notification to $email for order: $orderId")
+            logger.info("Sending ${input.notificationType} notification to ${input.email} for order: ${input.orderId}")
 
             // Simulate sending email/SMS
             Thread.sleep(500)
 
-            // Complete job
+            val output = SendNotificationOutput(
+                notificationSent = true,
+                sentAt = LocalDateTime.now(),
+                orderId = input.orderId
+            )
+
             client.newCompleteCommand(job.key)
-                .variables(
-                    mapOf(
-                        "notificationSent" to true,
-                        "sentAt" to LocalDateTime.now().toString()
-                    )
-                )
+                .variables(output)
                 .send()
                 .join()
 
@@ -147,45 +130,33 @@ class ProductProcessWorker(
 
         } catch (e: Exception) {
             logger.error("Error in send-notification task", e)
-            client.newFailCommand(job.key)
-                .retries(job.retries - 1)
-                .errorMessage(e.message)
-                .send()
-                .join()
+            handleJobFailure(job, e)
         }
     }
 
     /**
-     * Process fulfill order task
+     * Fulfill order task
      */
     @JobWorker(type = "fulfill-order", autoComplete = false)
     fun fulfillOrder(job: ActivatedJob) {
         try {
             logger.info("Starting fulfill-order task for process: ${job.processInstanceKey}")
 
-            val variables = job.variablesAsMap
-            val orderId = variables["orderId"] as? String
+            val input = getVariablesAs<FulfillOrderInput>(job)
 
-            // Business logic: fulfill order
-            logger.info("Fulfilling order: $orderId")
+            logger.info("Fulfilling order: ${input.orderId}")
 
             // Update process instance to completed
-            val processInstance = processInstanceRepository
-                .findByProcessInstanceId(job.processInstanceKey.toString())
-            if (processInstance != null) {
-                processInstance.status = "COMPLETED"
-                processInstance.updatedAt = LocalDateTime.now()
-                processInstanceRepository.save(processInstance)
-            }
+            updateProcessInstance(job.processInstanceKey, "COMPLETED")
 
-            // Complete job
+            val output = FulfillOrderOutput(
+                fulfilled = true,
+                fulfilledAt = LocalDateTime.now(),
+                orderId = input.orderId
+            )
+
             client.newCompleteCommand(job.key)
-                .variables(
-                    mapOf(
-                        "fulfilled" to true,
-                        "fulfilledAt" to LocalDateTime.now().toString()
-                    )
-                )
+                .variables(output)
                 .send()
                 .join()
 
@@ -193,11 +164,114 @@ class ProductProcessWorker(
 
         } catch (e: Exception) {
             logger.error("Error in fulfill-order task", e)
+            handleJobFailure(job, e)
+        }
+    }
+
+    /**
+     * Extracted to avoid repetition
+     */
+    private fun handleJobFailure(job: ActivatedJob, exception: Exception) {
+        try {
             client.newFailCommand(job.key)
-                .retries(job.retries - 1)
-                .errorMessage(e.message)
+                .retries(maxOf(0, job.retries - 1))
+                .errorMessage(exception.message ?: "Unknown error")
                 .send()
                 .join()
+        } catch (e: Exception) {
+            logger.error("Failed to fail job", e)
+        }
+    }
+
+    /**
+     * Extracted to avoid repetition
+     */
+    private fun updateProcessInstance(processInstanceKey: Long, status: String) {
+        try {
+            val processInstance = processInstanceRepository
+                .findByProcessInstanceId(processInstanceKey.toString())
+
+            processInstance?.apply {
+                this.status = status
+                this.updatedAt = LocalDateTime.now()
+                processInstanceRepository.save(this)
+            }
+        } catch (e: Exception) {
+            logger.warn("Failed to update process instance status", e)
         }
     }
 }
+
+// ============================================================================
+// INPUT/OUTPUT DATA CLASSES - Type-safe variable containers
+// ============================================================================
+
+/**
+ * Validate Product Task Input Variables
+ */
+data class ValidateProductInput(
+    val productId: Int = 0,
+    val productName: String? = null
+)
+
+/**
+ * Validate Product Task Output Variables
+ */
+data class ValidateProductOutput(
+    val isValid: Boolean,
+    val validationTime: Long,
+    val productId: Int
+)
+
+/**
+ * Create Order Task Input Variables
+ */
+data class CreateOrderInput(
+    val productId: Int = 0,
+    val quantity: Int = 1,
+    val price: Double = 0.0
+)
+
+/**
+ * Create Order Task Output Variables
+ */
+data class CreateOrderOutput(
+    val orderId: String,
+    val totalPrice: Double,
+    val createdAt: LocalDateTime,
+    val productId: Int
+)
+
+/**
+ * Send Notification Task Input Variables
+ */
+data class SendNotificationInput(
+    val orderId: String,
+    val email: String? = null,
+    val notificationType: String = "EMAIL"
+)
+
+/**
+ * Send Notification Task Output Variables
+ */
+data class SendNotificationOutput(
+    val notificationSent: Boolean,
+    val sentAt: LocalDateTime,
+    val orderId: String
+)
+
+/**
+ * Fulfill Order Task Input Variables
+ */
+data class FulfillOrderInput(
+    val orderId: String
+)
+
+/**
+ * Fulfill Order Task Output Variables
+ */
+data class FulfillOrderOutput(
+    val fulfilled: Boolean,
+    val fulfilledAt: LocalDateTime,
+    val orderId: String
+)
